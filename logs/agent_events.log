@@ -1,0 +1,8 @@
+{"timestamp": "2024-12-10T23:29:32.249448", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CdpAgentkitWrapper' object has no attribute 'get_wallet_details'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:31:11.846224", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CdpAgentkitWrapper' object has no attribute 'get_wallet_details'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:31:38.100686", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CdpAgentkitWrapper' object has no attribute 'get_wallet_details'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:35:00.289747", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CDPAgent' object has no attribute '_load_wallet_data'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:41:09.239416", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CDPAgent' object has no attribute '_load_wallet_data'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:42:17.953583", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CDPAgent' object has no attribute '_load_wallet_data'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:47:57.194426", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CDPAgent' object has no attribute 'get_wallet_details'"}, "status": "error"}
+{"timestamp": "2024-12-10T23:50:02.299772", "event_type": "initialization", "wallet_address": "unknown", "details": {"error": "'CDPAgent' object has no attribute 'get_wallet_details'"}, "status": "error"}

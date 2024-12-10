@@ -1,0 +1,95 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDP Agent Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold text-gray-800">CDP Analytics</div>
+                <a href="/" class="text-blue-500 hover:text-blue-600">Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Performance Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Success Rate Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Operation Success Rate</h3>
+                <canvas id="successRateChart"></canvas>
+            </div>
+            
+            <!-- Gas Usage Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Gas Usage Trends</h3>
+                <canvas id="gasUsageChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Detailed Stats -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Detailed Statistics</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="detailed-stats">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Fetch and display metrics
+        async function loadMetrics() {
+            const response = await fetch('/api/metrics');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                updateCharts(data.metrics);
+                updateDetailedStats(data.metrics);
+            }
+        }
+
+        function updateCharts(metrics) {
+            // Success Rate Chart
+            new Chart(document.getElementById('successRateChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Success', 'Failed'],
+                    datasets: [{
+                        data: [
+                            metrics.overall_stats.success_rate,
+                            100 - metrics.overall_stats.success_rate
+                        ],
+                        backgroundColor: ['#10B981', '#EF4444']
+                    }]
+                }
+            });
+
+            // Gas Usage Chart
+            new Chart(document.getElementById('gasUsageChart'), {
+                type: 'line',
+                data: {
+                    labels: metrics.gas_trends.map(t => t.date),
+                    datasets: [{
+                        label: 'Average Gas Used',
+                        data: metrics.gas_trends.map(t => t.avg_gas_used),
+                        borderColor: '#6366F1'
+                    }]
+                }
+            });
+        }
+
+        // Load initial data
+        loadMetrics();
+
+        // Refresh every 5 minutes
+        setInterval(loadMetrics, 300000);
+    </script>
+</body>
+</html>

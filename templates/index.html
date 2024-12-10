@@ -1,0 +1,127 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDP Agent Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold text-gray-800">CDP Agent Dashboard</div>
+                <div class="flex items-center space-x-4">
+                    <span id="network-status" class="text-sm text-green-600">●</span>
+                    <span id="wallet-address" class="text-sm text-gray-600"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Wallet Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Wallet Balance</h3>
+                <div class="text-3xl font-bold" id="eth-balance">Loading...</div>
+                <div class="text-sm text-gray-600">ETH</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Transaction Count</h3>
+                <div class="text-3xl font-bold" id="tx-count">Loading...</div>
+                <div class="text-sm text-gray-600">Total Transactions</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Gas Used (24h)</h3>
+                <div class="text-3xl font-bold" id="gas-used">Loading...</div>
+                <div class="text-sm text-gray-600">Average Gas/Tx</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button onclick="requestFaucet()" class="bg-blue-500 text-white px-4 py-2 rounded">
+                        Request Faucet
+                    </button>
+                    <button onclick="deployToken()" class="bg-green-500 text-white px-4 py-2 rounded">
+                        Deploy Token
+                    </button>
+                    <button onclick="transferAsset()" class="bg-purple-500 text-white px-4 py-2 rounded">
+                        Transfer Asset
+                    </button>
+                    <button onclick="refreshData()" class="bg-gray-500 text-white px-4 py-2 rounded">
+                        Refresh Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold mb-4">Recent Transactions</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hash</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-transactions">
+                            <!-- Transactions will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // WebSocket Connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            updateDashboard(data);
+        };
+
+        // Dashboard Updates
+        function updateDashboard(data) {
+            if (data.wallet) {
+                document.getElementById('eth-balance').textContent = 
+                    `${parseFloat(data.wallet.balance).toFixed(4)}`;
+                document.getElementById('wallet-address').textContent = 
+                    `${data.wallet.address.slice(0, 6)}...${data.wallet.address.slice(-4)}`;
+            }
+            
+            if (data.transactions) {
+                updateTransactionTable(data.transactions);
+            }
+        }
+
+        // API Calls
+        async function requestFaucet() {
+            const response = await fetch('/api/transaction', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    operation_type: 'request_faucet_funds'
+                })
+            });
+            refreshData();
+        }
+
+        // Regular data refresh
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>
