@@ -7,73 +7,15 @@ from contextlib import contextmanager
 class Database:
     """
     Manages database operations for the CDP agent system.
-    Handles transaction records, wallet data, and performance metrics.
     """
     def __init__(self, db_path: str = 'cdp_agent.db'):
         self.db_path = db_path
         self.initialize_database()
 
-    def get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # This allows us to access columns by name
-        return conn
-
-    def initialize_database(self) -> None:
-        """
-        Initializes the database with required tables for tracking transactions,
-        wallet operations, and performance metrics.
-        """
-        with self.get_connection() as conn:
-            # Transactions table for blockchain operations
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    wallet_address TEXT NOT NULL,
-                    operation_type TEXT NOT NULL,
-                    network TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    tx_hash TEXT,
-                    block_number INTEGER,
-                    gas_used REAL,
-                    amount REAL,
-                    token_address TEXT,
-                    recipient_address TEXT,
-                    details TEXT,
-                    error_message TEXT
-                )
-            """)
-
-            # Wallet data table for storing wallet information
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS wallets (
-                    address TEXT PRIMARY KEY,
-                    network TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    last_active DATETIME,
-                    balance TEXT,
-                    tokens TEXT,
-                    metadata TEXT
-                )
-            """)
-
-            # Performance metrics table
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS performance_metrics (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    operation_type TEXT NOT NULL,
-                    duration_ms INTEGER,
-                    success BOOLEAN,
-                    error_type TEXT,
-                    details TEXT
-                )
-            """)
-
     @contextmanager
     def get_connection(self):
         """
-        Context manager for database connections ensuring proper resource handling.
+        Context manager for database connections.
         """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -86,9 +28,59 @@ class Database:
         finally:
             conn.close()
 
+    def initialize_database(self) -> None:
+        """
+        Initializes the database with required tables.
+        """
+        with self.get_connection() as conn:
+            # Transactions table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    wallet_address TEXT,
+                    operation_type TEXT,
+                    network TEXT,
+                    status TEXT,
+                    tx_hash TEXT,
+                    block_number INTEGER,
+                    gas_used REAL,
+                    amount REAL,
+                    token_address TEXT,
+                    recipient_address TEXT,
+                    details TEXT,
+                    error_message TEXT
+                )
+            """)
+
+            # Wallets table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS wallets (
+                    address TEXT PRIMARY KEY,
+                    network TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_active DATETIME,
+                    balance TEXT,
+                    tokens TEXT,
+                    metadata TEXT
+                )
+            """)
+
+            # Metrics table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS performance_metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    operation_type TEXT,
+                    duration_ms INTEGER,
+                    success BOOLEAN,
+                    error_type TEXT,
+                    details TEXT
+                )
+            """)
+
     def record_transaction(self, transaction_data: Dict[str, Any]) -> int:
-        """Records a blockchain transaction with complete details.
-        Returns the ID of the inserted record."""
+        """Records a blockchain transaction."""
         with self.get_connection() as conn:
             cursor = conn.execute("""
                 INSERT INTO transactions (
@@ -97,11 +89,11 @@ class Database:
                     token_address, recipient_address, details, error_message
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                transaction_data.get('wallet_address'),
-                transaction_data.get('operation_type'),
-                transaction_data.get('network'),
-                transaction_data.get('status'),
-                transaction_data.get('tx_hash'),
+                str(transaction_data.get('wallet_address', '')),
+                str(transaction_data.get('operation_type', '')),
+                str(transaction_data.get('network', '')),
+                str(transaction_data.get('status', '')),
+                str(transaction_data.get('tx_hash', '')),
                 transaction_data.get('block_number'),
                 transaction_data.get('gas_used'),
                 transaction_data.get('amount'),
@@ -113,17 +105,15 @@ class Database:
             return cursor.lastrowid
 
     def update_wallet(self, wallet_data: Dict[str, Any]) -> None:
-        """
-        Updates or creates a wallet record with current information.
-        """
+        """Updates wallet information."""
         with self.get_connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO wallets (
                     address, network, last_active, balance, tokens, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                wallet_data['address'],
-                wallet_data['network'],
+                str(wallet_data.get('address', '')),
+                str(wallet_data.get('network', '')),
                 datetime.now().isoformat(),
                 json.dumps(wallet_data.get('balance', {})),
                 json.dumps(wallet_data.get('tokens', [])),
@@ -131,19 +121,17 @@ class Database:
             ))
 
     def record_metric(self, metric_data: Dict[str, Any]) -> None:
-        """
-        Records performance metrics for operation analysis.
-        """
+        """Records performance metrics."""
         with self.get_connection() as conn:
             conn.execute("""
                 INSERT INTO performance_metrics (
                     operation_type, duration_ms, success, error_type, details
                 ) VALUES (?, ?, ?, ?, ?)
             """, (
-                metric_data['operation_type'],
-                metric_data['duration_ms'],
-                metric_data['success'],
-                metric_data.get('error_type'),
+                str(metric_data.get('operation_type', '')),
+                metric_data.get('duration_ms', 0),
+                bool(metric_data.get('success', False)),
+                str(metric_data.get('error_type', '')),
                 json.dumps(metric_data.get('details', {}))
             ))
 
@@ -152,9 +140,7 @@ class Database:
         wallet_address: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
-        """
-        Retrieves transaction history with optional wallet filtering.
-        """
+        """Gets transaction history."""
         with self.get_connection() as conn:
             query = "SELECT * FROM transactions"
             params = []
@@ -167,29 +153,11 @@ class Database:
             params.append(limit)
             
             cursor = conn.execute(query, params)
-            return [dict(row) for row in cursor.fetchall()]
-
-    def save_wallet_data(self, wallet_data: Dict[str, Any]) -> None:
-        """
-        Saves wallet data to the database.
-        """
-        with self.get_connection() as conn:
-            conn.execute("""
-                INSERT INTO wallets (address, network, created_at, balance, tokens, metadata)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                wallet_data['address'],
-                wallet_data['network'],
-                datetime.now().isoformat(),
-                json.dumps(wallet_data.get('balance', {})),
-                json.dumps(wallet_data.get('tokens', [])),
-                json.dumps(wallet_data.get('metadata', {}))
-            ))
+            return [dict(zip([column[0] for column in cursor.description], row)) 
+                   for row in cursor.fetchall()]
 
     def get_wallet_details(self, address: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieves detailed wallet information.
-        """
+        """Gets wallet details."""
         with self.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM wallets WHERE address = ?",
@@ -197,37 +165,45 @@ class Database:
             )
             row = cursor.fetchone()
             if row:
-                return {
-                    "address": row["address"],
-                    "network": row["network"],
-                    "created_at": row["created_at"],
-                    "balance": json.loads(row["balance"]),
-                    "tokens": json.loads(row["tokens"]),
-                    "metadata": json.loads(row["metadata"])
-                }
+                column_names = [column[0] for column in cursor.description]
+                result = dict(zip(column_names, row))
+                result['balance'] = json.loads(result.get('balance', '{}'))
+                result['tokens'] = json.loads(result.get('tokens', '[]'))
+                result['metadata'] = json.loads(result.get('metadata', '{}'))
+                return result
             return None
+    def save_wallet_data(self, wallet_data: Dict[str, Any]) -> None:
+        """Saves wallet data to the database."""
+        try:
+            # If parsing JSON string
+            if isinstance(wallet_data, str):
+                try:
+                    wallet_json = json.loads(wallet_data)
+                except json.JSONDecodeError:
+                    raise DatabaseError("Invalid JSON in wallet data")
+            else:
+                wallet_json = wallet_data
 
-    def get_performance_metrics(
-        self,
-        operation_type: Optional[str] = None,
-        time_range_hours: int = 24
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieves performance metrics for analysis.
-        """
-        with self.get_connection() as conn:
-            query = """
-                SELECT * FROM performance_metrics
-                WHERE timestamp >= datetime('now', ?)
-            """
-            params = [f'-{time_range_hours} hours']
-            
-            if operation_type:
-                query += " AND operation_type = ?"
-                params.append(operation_type)
-            
-            cursor = conn.execute(query, params)
-            return [dict(row) for row in cursor.fetchall()]
+            # Extract address or use default_address_id
+            address = wallet_json.get('address') or wallet_json.get('default_address_id')
+            if not address:
+                raise DatabaseError("No valid address found in wallet data")
+
+            with self.get_connection() as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO wallets 
+                    (address, network, created_at, balance, tokens, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    address,  # Address
+                    wallet_json.get('network', 'base-sepolia'),  # Network
+                    datetime.now().isoformat(),  # Created at
+                    json.dumps(wallet_json.get('balance', {})),  # Balance
+                    json.dumps(wallet_json.get('tokens', [])),  # Tokens
+                    json.dumps(wallet_json)  # Full metadata
+                ))
+        except Exception as e:
+            raise DatabaseError(f"Failed to save wallet data: {str(e)}")
 
 class DatabaseError(Exception):
     """Custom exception for database-related errors."""
